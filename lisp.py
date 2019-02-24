@@ -17,12 +17,12 @@ def read_from_token(tokens):
         raise SyntaxError('unexpected EOF')
     token = tokens.pop(0)
     if token == '(':
-        Lst = []
+        L = []
         while tokens[0] != ')':
             # read_from_token return one object
-            Lst.append(read_from_token(tokens))
+            L.append(read_from_token(tokens))
         tokens.pop(0)  # remove ')'
-        return Lst
+        return L
     elif token == ')':  # input gone mad
         raise SyntaxError('Invalid input')
     # token by now can be either a number or a symbol
@@ -31,7 +31,7 @@ def read_from_token(tokens):
 
 
 def atom(token):
-    "Numbers become numbers; every other token is a symbol."
+    """Numbers become numbers; every other token is a symbol."""
     try:
         return int(token)
     except ValueError:
@@ -46,7 +46,7 @@ import operator as op
 
 
 def standard_env():
-    "return an standard Scheme evironment"
+    """return an standard Scheme evironment"""
     env = {}
     env.update(vars(math))  # sin, cos, exp...
     env.update({
@@ -66,6 +66,9 @@ def standard_env():
         'list?': lambda x: isinstance(x, List),
         '#t': True,
         '#f': False,
+        ' ': None,
+        'positive?': lambda x: x > 0,
+        'negative?': lambda x: x <= 0
     })
     return env
 
@@ -79,8 +82,17 @@ class Procedure(object):
     def __init__(self, parms, body, env):
         self.parms, self.body, self.env = parms, body, env
 
+
+class ProcedureLambda(Procedure):
     def __call__(self, *args):
         env = Environment(dict(zip(self.parms, args)), self.env)
+        return eval(self.body, env)
+
+
+class ProcedureLet(Procedure):
+    def result(self):
+        self.parms = {parm: eval(arg, self.env) for (parm, arg) in self.parms}
+        env = Environment(dict(self.parms), self.env)
         return eval(self.body, env)
 
 
@@ -93,6 +105,14 @@ def eval(x, env=global_env):
         (_, test, conseq, alt) = x
         exp = (conseq if eval(test, env) else alt)
         return eval(exp, env)
+    elif x[0] == 'cond':
+        (_, *body) = x
+        exp = ' '
+        for (p, e) in body:
+            if p == 'else' or eval(p, env):
+                exp = e
+                break
+        return eval(exp, env)
     elif x[0] == 'define':
         (_, symbol, exp) = x
         env[symbol] = eval(exp, env)
@@ -101,7 +121,10 @@ def eval(x, env=global_env):
         return exp
     elif x[0] == 'lambda':
         (_, parms, body) = x
-        return Procedure(parms, body, env)
+        return ProcedureLambda(parms, body, env)
+    elif x[0] == 'let':
+        (_, parms, body) = x
+        return ProcedureLet(parms, body, env).result()
     else:  # (proc arg...)
         proc = eval(x[0], env)
         args = [eval(evl, env) for evl in x[1:]]
@@ -109,7 +132,7 @@ def eval(x, env=global_env):
 
 
 def repl():
-    # read eval print loop, repl
+    """read eval print loop, repl"""
     while True:
         try:
             code = read()
