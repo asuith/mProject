@@ -46,7 +46,7 @@ import operator as op
 
 
 def standard_env():
-    """return an standard Scheme evironment"""
+    """return an standard Scheme environment"""
     env = {}
     env.update(vars(math))  # sin, cos, exp...
     env.update({
@@ -89,7 +89,7 @@ class ProcedureLambda(Procedure):
         return eval(self.body, env)
 
 
-class ProcedureLet(Procedure):
+class ProcedureLet(Procedure):  
     def result(self):
         self.parms = {parm: eval(arg, self.env) for (parm, arg) in self.parms}
         env = Environment(dict(self.parms), self.env)
